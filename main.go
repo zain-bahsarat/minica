@@ -36,7 +36,7 @@ type issuer struct {
 	cert *x509.Certificate
 }
 
-func getIssuer(keyFile, certFile string) (*issuer, error) {
+func GetIssuer(keyFile, certFile string) (*issuer, error) {
 	keyContents, keyErr := ioutil.ReadFile(keyFile)
 	certContents, certErr := ioutil.ReadFile(certFile)
 	if os.IsNotExist(keyErr) && os.IsNotExist(certErr) {
@@ -44,7 +44,7 @@ func getIssuer(keyFile, certFile string) (*issuer, error) {
 		if err != nil {
 			return nil, err
 		}
-		return getIssuer(keyFile, certFile)
+		return GetIssuer(keyFile, certFile)
 	} else if keyErr != nil {
 		return nil, fmt.Errorf("%s (but %s exists)", keyErr, certFile)
 	} else if certErr != nil {
@@ -213,7 +213,7 @@ func calculateSKID(pubKey crypto.PublicKey) ([]byte, error) {
 	return skid[:], nil
 }
 
-func Sign(iss *issuer, domains []string, ipAddresses []string) (*x509.Certificate, error) {
+func Sign(iss *issuer, domains []string, ipAddresses []string, cnFolder string) (*x509.Certificate, error) {
 	var cn string
 	if len(domains) > 0 {
 		cn = domains[0]
@@ -222,11 +222,7 @@ func Sign(iss *issuer, domains []string, ipAddresses []string) (*x509.Certificat
 	} else {
 		return nil, fmt.Errorf("must specify at least one domain name or IP address")
 	}
-	var cnFolder = strings.Replace(cn, "*", "_", -1)
-	err := os.Mkdir(cnFolder, 0700)
-	if err != nil && !os.IsExist(err) {
-		return nil, err
-	}
+
 	key, err := makeKey(fmt.Sprintf("%s/key.pem", cnFolder))
 	if err != nil {
 		return nil, err
@@ -336,10 +332,10 @@ will not overwrite existing keys or certificates.
 			os.Exit(1)
 		}
 	}
-	issuer, err := getIssuer(*caKey, *caCert)
+	issuer, err := GetIssuer(*caKey, *caCert)
 	if err != nil {
 		return err
 	}
-	_, err = Sign(issuer, domainSlice, ipSlice)
+	_, err = Sign(issuer, domainSlice, ipSlice, "")
 	return err
 }
